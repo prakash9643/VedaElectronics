@@ -1,0 +1,14 @@
+.floating-contact-buttons{position:fixed;right:clamp(14px,2.4vw,30px);bottom:22px;z-index:70;display:grid;gap:12px;opacity:0;pointer-events:none;transform:translateY(18px) scale(.92);transition:opacity .25s ease,transform .25s ease}
+.floating-contact-buttons.is-visible{opacity:1;pointer-events:auto;transform:translateY(0) scale(1)}
+.floating-contact-button{position:relative;display:grid;width:48px;height:48px;place-items:center;border-radius:50%;color:#fff;box-shadow:0 12px 26px rgba(16,35,44,.24);transition:transform .18s ease,box-shadow .18s ease}
+.floating-contact-button:before{content:"";position:absolute;inset:-6px;border-radius:inherit;opacity:.34;animation:floating-contact-pulse 1.8s ease-out infinite}
+.floating-contact-button svg{position:relative;z-index:1;width:23px;height:23px}
+.floating-contact-button.whatsapp{background:#25d366}
+.floating-contact-button.whatsapp:before{background:#25d366}
+.floating-contact-button.call{background:var(--orange);animation:floating-contact-ring 2.8s ease-in-out infinite}
+.floating-contact-button.call:before{background:var(--orange)}
+.floating-contact-button:hover{transform:translateY(-3px) scale(1.04);box-shadow:0 16px 30px rgba(16,35,44,.3)}
+@keyframes floating-contact-pulse{0%{transform:scale(.75);opacity:.45}80%,100%{transform:scale(1.45);opacity:0}}
+@keyframes floating-contact-ring{0%,82%,100%{transform:rotate(0)}86%{transform:rotate(9deg)}90%{transform:rotate(-9deg)}94%{transform:rotate(6deg)}}
+@media (max-width:600px){.floating-contact-buttons{right:14px;bottom:16px;gap:10px}.floating-contact-button{width:44px;height:44px}.floating-contact-button svg{width:21px;height:21px}}
+@media (prefers-reduced-motion:reduce){.floating-contact-buttons,.floating-contact-button,.floating-contact-button:before{animation:none;transition:none}}
