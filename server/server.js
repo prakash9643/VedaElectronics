@@ -1,3 +1,4 @@
+import { list, put } from '@vercel/blob'
 import cors from 'cors'
 import 'dotenv/config'
 import express from 'express'
@@ -35,6 +36,7 @@ const defaultSettings = {
 }
 
 async function readBookings() {
+  if (process.env.BLOB_READ_WRITE_TOKEN) return readBlobJson('bookings.json', [])
   try {
     return JSON.parse(await fs.readFile(bookingsFile, 'utf8'))
   } catch (error) {
@@ -46,11 +48,13 @@ async function readBookings() {
 }
 
 async function writeBookings(bookings) {
+  if (process.env.BLOB_READ_WRITE_TOKEN) return writeBlobJson('bookings.json', bookings)
   await fs.mkdir(dataDirectory, { recursive: true })
   await fs.writeFile(bookingsFile, JSON.stringify(bookings, null, 2))
 }
 
 async function readSettings() {
+  if (process.env.BLOB_READ_WRITE_TOKEN) return readBlobJson('site-settings.json', defaultSettings)
   try {
     return { ...defaultSettings, ...JSON.parse(await fs.readFile(settingsFile, 'utf8')) }
   } catch (error) {
@@ -62,8 +66,22 @@ async function readSettings() {
 }
 
 async function writeSettings(settings) {
+  if (process.env.BLOB_READ_WRITE_TOKEN) return writeBlobJson('site-settings.json', settings)
   await fs.mkdir(dataDirectory, { recursive: true })
   await fs.writeFile(settingsFile, JSON.stringify(settings, null, 2))
+}
+
+async function readBlobJson(filename, fallback) {
+  const result = await list({ prefix: `veda-electronics/${filename}` })
+  const blob = result.blobs[0]
+  if (!blob) return fallback
+  const response = await fetch(blob.url)
+  if (!response.ok) throw new Error(`Unable to read ${filename} from Vercel Blob.`)
+  return response.json()
+}
+
+async function writeBlobJson(filename, value) {
+  await put(`veda-electronics/${filename}`, JSON.stringify(value, null, 2), { access: 'public', addRandomSuffix: false, contentType: 'application/json' })
 }
 
 function requireAdmin(request, response, next) {
@@ -150,6 +168,7 @@ app.get('/api/system', requireAdmin, async (_request, response) => {
   response.json({
     api: 'online',
     storage: 'online',
+    storageProvider: process.env.BLOB_READ_WRITE_TOKEN ? 'Vercel Blob' : 'local JSON (development only)',
     email: process.env.RESEND_API_KEY && !process.env.RESEND_API_KEY.startsWith('replace_') ? 'configured' : 'not-configured',
     sender: process.env.RESEND_FROM || 'not configured',
   })
@@ -174,8 +193,11 @@ app.patch('/api/bookings/:id', requireAdmin, async (request, response) => {
   response.json({ booking })
 })
 
-const clientDirectory = path.join(__dirname, '../dist')
-app.use(express.static(clientDirectory))
-app.get('*', (_request, response) => response.sendFile(path.join(clientDirectory, 'index.html')))
+if (process.env.VERCEL !== '1') {
+  const clientDirectory = path.join(__dirname, '../dist')
+  app.use(express.static(clientDirectory))
+  app.get('*', (_request, response) => response.sendFile(path.join(clientDirectory, 'index.html')))
+  app.listen(port, () => console.log(`Veda Electronics API running at http://localhost:${port}`))
+}
 
-app.listen(port, () => console.log(`Veda Electronics API running at http://localhost:${port}`))
+export default app

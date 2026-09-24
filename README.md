@@ -37,6 +37,10 @@ RESEND_FROM=Veda Electronics <onboarding@resend.dev>
 
 For production, verify your sending domain in Resend and set `RESEND_FROM` to an address on that domain. Without `RESEND_API_KEY`, the server saves the booking and prints an email preview in the API terminal. For a single-process production deployment, run `npm run build` followed by `npm start`.
 
+## Vercel deployment
+
+The Vercel deployment uses `api/index.js` and `api/[...path].js` as serverless API handlers. Add these environment variables in Vercel Project Settings before deploying: `ADMIN_KEY`, `RESEND_API_KEY`, `RESEND_FROM`, and `BLOB_READ_WRITE_TOKEN`. `PORT` is not required on Vercel. `BLOB_READ_WRITE_TOKEN` is generated when you create a Vercel Blob store and is required for durable production booking and CMS settings storage; local JSON files remain the development fallback.
+
 If the API returns `401 Unauthorized` from Resend, the API key is invalid or revoked. Create a new Resend key and replace `RESEND_API_KEY` in `.env`. The `onboarding@resend.dev` sender is for testing and cannot send arbitrary customer mail; use a verified domain sender for real bookings.
 
 ## Structure
