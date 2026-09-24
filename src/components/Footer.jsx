@@ -25,22 +25,23 @@ function MarkIcon() {
   )
 }
 
-export default function Footer({ onBookService }) {
+export default function Footer({ settings, onBookService }) {
+  const phone = settings?.phone || '7011612320'
   return (
     <>
       <section className="footer-cta" aria-labelledby="footer-cta-title">
         <img className="footer-cta-image" src={footerImage} alt="" aria-hidden="true" loading="lazy" />
         <div className="wrap footer-cta-inner">
           <div>
-            <h2 id="footer-cta-title">Need a technician at your door today?</h2>
-            <p>Same-day slots open in Darbhanga Lahariya Sarai.</p>
+            <h2 id="footer-cta-title">{settings?.footerTitle || 'Need a technician at your door today?'}</h2>
+            <p>{settings?.footerDescription || 'Same-day slots open in Darbhanga Lahariya Sarai.'}</p>
           </div>
           <div className="footer-cta-actions">
             <button className="btn btn-book" type="button" onClick={onBookService}>
               <CalendarIcon />
               Book Service
             </button>
-            <a className="btn btn-call" href="tel:+917011612320">
+            <a className="btn btn-call" href={`tel:${phone}`}>
               <PhoneIcon />
               Call Now
             </a>
@@ -54,25 +55,25 @@ export default function Footer({ onBookService }) {
           <a className="footer-brand" href="#top" aria-label="Veda Electronics home">
             <span className="footer-mark"><MarkIcon /></span>
             <span>
-              <strong>Veda Electronics</strong>
-              <small>Doorstep repair, Darbhanga Lahariya Sarai</small>
+              <strong>{settings?.companyName || 'Veda Electronics'}</strong>
+              <small>Doorstep repair, {settings?.serviceArea || 'Darbhanga Lahariya Sarai'}</small>
             </span>
           </a>
           <nav className="footer-nav" aria-label="Footer navigation">
             <a href="#top">Services</a>
             <a href="#top">Areas We Cover</a>
             <a href="#why-choose-title">Warranty</a>
-            <a href="tel:+917011612320">Contact</a>
+            <a href={`tel:${phone}`}>Contact</a>
           </nav>
-          <a className="footer-phone" href="tel:+917011612320">
+          <a className="footer-phone" href={`tel:${phone}`}>
             <PhoneIcon />
-            7011612320
+            {phone}
           </a>
         </div>
       </div>
 
       <div className="footer-copyright">
-        <p>(c) 2026 Veda Electronics. All rights reserved. - <a href="tel:+917011612320">7011612320</a></p>
+        <p>(c) 2026 {settings?.companyName || 'Veda Electronics'}. All rights reserved. - <a href={`tel:${phone}`}>{phone}</a></p>
       </div>
       </footer>
     </>

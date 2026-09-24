@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Header from './components/Header.jsx'
 import Hero from './components/Hero.jsx'
 import ServicesCarousel from './components/ServicesCarousel.jsx'
@@ -12,15 +12,32 @@ import FloatingServiceStack from './components/FloatingServiceStack.jsx'
 import FloatingContactButtons from './components/FloatingContactButtons.jsx'
 import HomeApplianceServices from './components/HomeApplianceServices.jsx'
 import WhyChooseElectronicsServices from './components/WhyChooseElectronicsServices.jsx'
+import AdminPanel from './components/AdminPanel.jsx'
 
 
 export default function App() {
   const [bookingOpen, setBookingOpen] = useState(false)
+  const [settings, setSettings] = useState(null)
+
+  useEffect(() => {
+    const isAdmin = window.location.pathname === '/admin'
+    document.title = isAdmin ? 'Admin Workspace | Veda Electronics' : 'Veda Electronics | Doorstep Appliance Repair in Darbhanga'
+    let robots = document.querySelector('meta[name="robots"]')
+    if (!robots) {
+      robots = document.createElement('meta')
+      robots.name = 'robots'
+      document.head.appendChild(robots)
+    }
+    robots.content = isAdmin ? 'noindex, nofollow' : 'index, follow, max-image-preview:large'
+    fetch('/api/settings').then((response) => response.json()).then((result) => setSettings(result.settings)).catch(() => {})
+  }, [])
+
+  if (window.location.pathname === '/admin') return <AdminPanel />
 
   return (
     <>
-      <Header onBookService={() => setBookingOpen(true)} />
-      <Hero onBookService={() => setBookingOpen(true)} />
+      <Header settings={settings} onBookService={() => setBookingOpen(true)} />
+      <Hero settings={settings} onBookService={() => setBookingOpen(true)} />
       <ServicesCarousel />
       <WhyChooseUs />
       <MiddleBannerSwiper />
@@ -28,7 +45,7 @@ export default function App() {
       <WhyChooseElectronicsServices />
       <TrustedCompanies />
       <Testimonials />
-      <Footer onBookService={() => setBookingOpen(true)} />
+      <Footer settings={settings} onBookService={() => setBookingOpen(true)} />
       <BookingModal open={bookingOpen} onClose={() => setBookingOpen(false)} />
       <FloatingServiceStack />
       <FloatingContactButtons />

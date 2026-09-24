@@ -1,0 +1,48 @@
+[
+  {
+    "id": "VEDA-MUFD5NEC",
+    "fullName": "Testing",
+    "email": "testing@gmail.com",
+    "contactNumber": "9266983655",
+    "alternateNumber": "8523697410",
+    "city": "Darbhanga Lahariya Sarai",
+    "serviceDate": "2026-09-30",
+    "product": "Washing Machine (Front Load / Top Load/Semi)",
+    "otherProduct": "",
+    "problem": "Drum Not Rotating",
+    "otherProblem": "",
+    "status": "Pending",
+    "createdAt": "2026-09-24T10:02:51.444Z"
+  },
+  {
+    "id": "VEDA-MUF9743T",
+    "fullName": "Prakash Jha",
+    "email": "prakashjha241@gmail.com",
+    "contactNumber": "09643583343",
+    "alternateNumber": "8468999389",
+    "city": "Darbhanga Lahariya Sarai",
+    "serviceDate": "2026-09-25",
+    "product": "Washing Machine (Front Load / Top Load/Semi)",
+    "otherProduct": "",
+    "problem": "Not Powering On",
+    "otherProblem": "",
+    "status": "Pending",
+    "createdAt": "2026-09-24T08:12:01.289Z"
+  },
+  {
+    "id": "VEDA-MUF8I5YT",
+    "fullName": "Prakash Jha",
+    "email": "prakashjha241@gmail.com",
+    "contactNumber": "09643583343",
+    "alternateNumber": "8468999389",
+    "city": "Alwar",
+    "serviceDate": "2026-09-24",
+    "product": "Air Conditioner (Split / Window)",
+    "otherProduct": "",
+    "problem": "Not Powering On",
+    "otherProblem": "",
+    "status": "Confirmed",
+    "createdAt": "2026-09-24T07:52:37.301Z",
+    "updatedAt": "2026-09-24T08:01:22.517Z"
+  }
+]

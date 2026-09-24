@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 const CITIES = ['Darbhanga Lahariya Sarai', 'Alwar', 'Allahabad', 'Baleshwar', 'Bangalore', 'Belgaum', 'Bhilai', 'Bhopal', 'Bikaner', 'Chandrapur', 'Chatarpur (MP)', 'Chennai', 'Darbhanga', 'Dhanbad', 'Delhi', 'Dharwad', 'Durg', 'Ghaziabad', 'Goa', 'Gurgaon', 'Guwahati', 'Gwalior', 'Hassan', 'Hubli', 'Indore', 'Jaipur', 'Jamshedpur', 'Jodhpur', 'Kalaburagi', 'Kanpur', 'Kolkata', 'Kolhapur', 'Lucknow', 'Madhubani', 'Mangalore', 'Moradabad', 'Mumbai', 'Mysuru', 'Noida', 'Patna', 'Pune', 'Raipur', 'Ramgarh', 'Ranchi', 'Rewa (MP)']
 const PRODUCTS = ['Air Conditioner (Split / Window)', 'Washing Machine (Front Load / Top Load/Semi)', 'Refrigerator / Fridge', 'Microwave Oven', 'LED / Smart TV', 'Geyser / Water Heater', 'Dishwasher', 'Water Purifier (RO)', 'Other (Please Specify)']
 const PROBLEMS = ['Not Working', 'Not Powering On', 'Not Cooling', 'Not Spinning', 'Not Draining Water', 'Drum Not Rotating', 'Compressor Issue', 'Water Leakage', 'Buttons Not Working', 'Other (Please Describe the Issue)']
-const INITIAL_FORM = { fullName: '', contactNumber: '', city: '', alternateNumber: '', product: '', otherProduct: '', problem: '', otherProblem: '' }
+const INITIAL_FORM = { fullName: '', email: '', contactNumber: '', city: '', serviceDate: '', alternateNumber: '', product: '', otherProduct: '', problem: '', otherProblem: '' }
 
 function FieldIcon({ type }) {
   const paths = {
@@ -55,6 +55,9 @@ function CustomSelect({ name, value, onChange, options, placeholder, icon }) {
 export default function BookingModal({ open, onClose }) {
   const [form, setForm] = useState(INITIAL_FORM)
   const [submitted, setSubmitted] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const [emailMessage, setEmailMessage] = useState('')
 
   useEffect(() => {
     if (!open) return undefined
@@ -76,7 +79,30 @@ export default function BookingModal({ open, onClose }) {
   const handleClose = () => {
     setForm(INITIAL_FORM)
     setSubmitted(false)
+    setError('')
+    setEmailMessage('')
     onClose()
+  }
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    setIsSubmitting(true)
+    setError('')
+    try {
+      const response = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.message || 'Unable to submit your request.')
+      setEmailMessage(result.email?.sent ? 'A confirmation email was sent.' : `Booking saved. Email not sent: ${result.email?.reason || 'email service unavailable'}`)
+      setSubmitted(true)
+    } catch (submitError) {
+      setError(submitError.message)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -97,22 +123,26 @@ export default function BookingModal({ open, onClose }) {
           <div className="booking-success" role="status">
             <div className="success-mark" aria-hidden="true">OK</div>
             <h3>Request received</h3>
-            <p>Thank you, {form.fullName || 'we will contact you'}! Our team will call you shortly.</p>
+            <p>Thank you, {form.fullName || 'we will contact you'}! Your service request is booked for {form.serviceDate}.</p>
+            <p className="booking-email-status">{emailMessage}</p>
             <button className="btn btn-book" type="button" onClick={handleClose}>Done</button>
           </div>
         ) : (
-          <form className="booking-form" onSubmit={(event) => { event.preventDefault(); setSubmitted(true) }}>
+          <form className="booking-form" onSubmit={handleSubmit}>
             <div className="booking-form-grid">
               <label><span>Full Name</span><div className="booking-control"><FieldIcon type="user" /><input name="fullName" value={form.fullName} onChange={updateField} placeholder="Enter your full name" required /></div></label>
+              <label><span>Email Address</span><div className="booking-control"><input name="email" value={form.email} onChange={updateField} type="email" placeholder="Where should we send confirmation?" required /></div></label>
               <label><span>Contact Number</span><div className="booking-control"><FieldIcon type="phone" /><input name="contactNumber" value={form.contactNumber} onChange={updateField} type="tel" inputMode="tel" pattern="[0-9+() -]{10,}" placeholder="Enter contact number" required /></div></label>
               <label><span>City</span><CustomSelect name="city" value={form.city} onChange={updateField} options={CITIES} placeholder="Select your city" icon="city" /></label>
+              <label><span>Preferred Service Date</span><div className="booking-control"><input name="serviceDate" value={form.serviceDate} onChange={updateField} type="date" min={new Date().toISOString().split('T')[0]} required /></div></label>
               <label><span>Alternate Number <em>Optional</em></span><div className="booking-control"><FieldIcon type="phone" /><input name="alternateNumber" value={form.alternateNumber} onChange={updateField} type="tel" inputMode="tel" pattern="[0-9+() -]{10,}" placeholder="Enter alternate number" /></div></label>
               <label><span>Product Selection</span><CustomSelect name="product" value={form.product} onChange={updateField} options={PRODUCTS} placeholder="Select a product" icon="product" /></label>
               {form.product === 'Other (Please Specify)' && <label><span>Other Product</span><div className="booking-control"><FieldIcon type="product" /><input name="otherProduct" value={form.otherProduct} onChange={updateField} placeholder="Type your product" required /></div></label>}
               <label><span>Problem Selection</span><CustomSelect name="problem" value={form.problem} onChange={updateField} options={PROBLEMS} placeholder="Select the problem" icon="problem" /></label>
               {form.problem === 'Other (Please Describe the Issue)' && <label><span>Describe the Issue</span><div className="booking-control"><FieldIcon type="problem" /><input name="otherProblem" value={form.otherProblem} onChange={updateField} placeholder="Describe the issue" required /></div></label>}
             </div>
-            <button className="btn btn-book booking-submit" type="submit">Send Request <span aria-hidden="true">-&gt;</span></button>
+            {error && <p className="booking-error" role="alert">{error}</p>}
+            <button className="btn btn-book booking-submit" type="submit" disabled={isSubmitting}>{isSubmitting ? 'Sending...' : 'Book Service'} <span aria-hidden="true">-&gt;</span></button>
           </form>
         )}
       </div>
