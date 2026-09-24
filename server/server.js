@@ -12,6 +12,8 @@ const bookingsFile = path.join(dataDirectory, 'bookings.json')
 const settingsFile = path.join(dataDirectory, 'site-settings.json')
 const port = Number(process.env.PORT || 4000)
 const adminKey = process.env.ADMIN_KEY || 'dev-admin-key'
+const isVercel = process.env.VERCEL === '1'
+const hasBlobStorage = Boolean(process.env.BLOB_READ_WRITE_TOKEN)
 
 const app = express()
 app.use(cors())
@@ -36,7 +38,8 @@ const defaultSettings = {
 }
 
 async function readBookings() {
-  if (process.env.BLOB_READ_WRITE_TOKEN) return readBlobJson('bookings.json', [])
+  if (hasBlobStorage) return readBlobJson('bookings.json', [])
+  if (isVercel) throw new Error('Production storage is not configured. Add BLOB_READ_WRITE_TOKEN in Vercel Project Settings.')
   try {
     return JSON.parse(await fs.readFile(bookingsFile, 'utf8'))
   } catch (error) {
@@ -48,13 +51,15 @@ async function readBookings() {
 }
 
 async function writeBookings(bookings) {
-  if (process.env.BLOB_READ_WRITE_TOKEN) return writeBlobJson('bookings.json', bookings)
+  if (hasBlobStorage) return writeBlobJson('bookings.json', bookings)
+  if (isVercel) throw new Error('Production storage is not configured. Add BLOB_READ_WRITE_TOKEN in Vercel Project Settings.')
   await fs.mkdir(dataDirectory, { recursive: true })
   await fs.writeFile(bookingsFile, JSON.stringify(bookings, null, 2))
 }
 
 async function readSettings() {
-  if (process.env.BLOB_READ_WRITE_TOKEN) return readBlobJson('site-settings.json', defaultSettings)
+  if (hasBlobStorage) return readBlobJson('site-settings.json', defaultSettings)
+  if (isVercel) return defaultSettings
   try {
     return { ...defaultSettings, ...JSON.parse(await fs.readFile(settingsFile, 'utf8')) }
   } catch (error) {
@@ -66,7 +71,8 @@ async function readSettings() {
 }
 
 async function writeSettings(settings) {
-  if (process.env.BLOB_READ_WRITE_TOKEN) return writeBlobJson('site-settings.json', settings)
+  if (hasBlobStorage) return writeBlobJson('site-settings.json', settings)
+  if (isVercel) throw new Error('Production storage is not configured. Add BLOB_READ_WRITE_TOKEN in Vercel Project Settings.')
   await fs.mkdir(dataDirectory, { recursive: true })
   await fs.writeFile(settingsFile, JSON.stringify(settings, null, 2))
 }
@@ -156,7 +162,8 @@ app.post('/api/bookings', async (request, response) => {
     response.status(201).json({ booking: { id: booking.id, serviceDate: booking.serviceDate }, email })
   } catch (error) {
     console.error('Booking creation failed:', error)
-    response.status(500).json({ message: 'Your request was saved, but confirmation could not be sent. Please call us.' })
+    const storageError = error.message.includes('Production storage is not configured')
+    response.status(storageError ? 503 : 500).json({ message: storageError ? 'Booking storage is not configured on Vercel. Add BLOB_READ_WRITE_TOKEN in Vercel Project Settings and redeploy.' : 'Your request could not be saved. Please try again or call us.' })
   }
 })
 
@@ -167,8 +174,8 @@ app.get('/api/bookings', requireAdmin, async (_request, response) => {
 app.get('/api/system', requireAdmin, async (_request, response) => {
   response.json({
     api: 'online',
-    storage: 'online',
-    storageProvider: process.env.BLOB_READ_WRITE_TOKEN ? 'Vercel Blob' : 'local JSON (development only)',
+    storage: hasBlobStorage || !isVercel ? 'online' : 'not-configured',
+    storageProvider: hasBlobStorage ? 'Vercel Blob' : isVercel ? 'missing BLOB_READ_WRITE_TOKEN' : 'local JSON (development only)',
     email: process.env.RESEND_API_KEY && !process.env.RESEND_API_KEY.startsWith('replace_') ? 'configured' : 'not-configured',
     sender: process.env.RESEND_FROM || 'not configured',
   })
