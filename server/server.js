@@ -1,8 +1,8 @@
-import { list, put } from '@vercel/blob'
 import cors from 'cors'
 import 'dotenv/config'
 import express from 'express'
 import fs from 'node:fs/promises'
+import { MongoClient } from 'mongodb'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -13,9 +13,10 @@ const settingsFile = path.join(dataDirectory, 'site-settings.json')
 const port = Number(process.env.PORT || 4000)
 const adminKey = process.env.ADMIN_KEY || 'dev-admin-key'
 const isVercel = process.env.VERCEL === '1'
-const blobToken = (process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN_READ_WRITE_TOKEN || process.env.VERCEL_BLOB_READ_WRITE_TOKEN || '').trim()
-const hasBlobStorage = Boolean(blobToken)
-if (blobToken && !process.env.BLOB_READ_WRITE_TOKEN) process.env.BLOB_READ_WRITE_TOKEN = blobToken
+const mongoUri = (process.env.MONGODB_URI || '').trim()
+const mongoDatabaseName = (process.env.MONGODB_DB || 'veda_electronics').trim()
+const hasMongo = Boolean(mongoUri)
+let mongoClientPromise
 
 const app = express()
 app.use(cors())
@@ -40,8 +41,11 @@ const defaultSettings = {
 }
 
 async function readBookings() {
-  if (hasBlobStorage) return readBlobJson('bookings.json', [])
-  if (isVercel) throw new Error('Production storage is not configured. Add BLOB_READ_WRITE_TOKEN in Vercel Project Settings.')
+  if (hasMongo) {
+    const database = await getMongoDatabase()
+    return database.collection('bookings').find({}, { projection: { _id: 0 } }).sort({ createdAt: -1 }).toArray()
+  }
+  if (isVercel) throw new Error('Production storage is not configured. Add MONGODB_URI in Vercel Project Settings.')
   try {
     return JSON.parse(await fs.readFile(bookingsFile, 'utf8'))
   } catch (error) {
@@ -53,14 +57,26 @@ async function readBookings() {
 }
 
 async function writeBookings(bookings) {
-  if (hasBlobStorage) return writeBlobJson('bookings.json', bookings)
-  if (isVercel) throw new Error('Production storage is not configured. Add BLOB_READ_WRITE_TOKEN in Vercel Project Settings.')
+  if (hasMongo) {
+    const database = await getMongoDatabase()
+    const collection = database.collection('bookings')
+    await collection.deleteMany({})
+    if (bookings.length) await collection.insertMany(bookings)
+    return
+  }
+  if (isVercel) throw new Error('Production storage is not configured. Add MONGODB_URI in Vercel Project Settings.')
   await fs.mkdir(dataDirectory, { recursive: true })
   await fs.writeFile(bookingsFile, JSON.stringify(bookings, null, 2))
 }
 
 async function readSettings() {
-  if (hasBlobStorage) return readBlobJson('site-settings.json', defaultSettings)
+  if (hasMongo) {
+    const database = await getMongoDatabase()
+    const settings = await database.collection('settings').findOne({ _id: 'site-settings' })
+    if (!settings) return defaultSettings
+    const { _id, ...values } = settings
+    return { ...defaultSettings, ...values }
+  }
   if (isVercel) return defaultSettings
   try {
     return { ...defaultSettings, ...JSON.parse(await fs.readFile(settingsFile, 'utf8')) }
@@ -73,23 +89,23 @@ async function readSettings() {
 }
 
 async function writeSettings(settings) {
-  if (hasBlobStorage) return writeBlobJson('site-settings.json', settings)
-  if (isVercel) throw new Error('Production storage is not configured. Add BLOB_READ_WRITE_TOKEN in Vercel Project Settings.')
+  if (hasMongo) {
+    const database = await getMongoDatabase()
+    await database.collection('settings').replaceOne({ _id: 'site-settings' }, { _id: 'site-settings', ...settings }, { upsert: true })
+    return
+  }
+  if (isVercel) throw new Error('Production storage is not configured. Add MONGODB_URI in Vercel Project Settings.')
   await fs.mkdir(dataDirectory, { recursive: true })
   await fs.writeFile(settingsFile, JSON.stringify(settings, null, 2))
 }
 
-async function readBlobJson(filename, fallback) {
-  const result = await list({ prefix: `veda-electronics/${filename}` })
-  const blob = result.blobs[0]
-  if (!blob) return fallback
-  const response = await fetch(blob.url)
-  if (!response.ok) throw new Error(`Unable to read ${filename} from Vercel Blob.`)
-  return response.json()
-}
-
-async function writeBlobJson(filename, value) {
-  await put(`veda-electronics/${filename}`, JSON.stringify(value, null, 2), { access: 'public', addRandomSuffix: false, contentType: 'application/json' })
+async function getMongoDatabase() {
+  if (!mongoClientPromise) {
+    const client = new MongoClient(mongoUri)
+    mongoClientPromise = client.connect()
+  }
+  const client = await mongoClientPromise
+  return client.db(mongoDatabaseName)
 }
 
 function requireAdmin(request, response, next) {
@@ -165,7 +181,8 @@ app.post('/api/bookings', async (request, response) => {
   } catch (error) {
     console.error('Booking creation failed:', error)
     const storageError = error.message.includes('Production storage is not configured')
-    response.status(storageError ? 503 : 500).json({ message: storageError ? 'Booking storage is not configured on Vercel. Add BLOB_READ_WRITE_TOKEN in Vercel Project Settings and redeploy.' : 'Your request could not be saved. Please try again or call us.' })
+    const mongoError = hasMongo && !storageError
+    response.status(storageError ? 503 : mongoError ? 502 : 500).json({ message: storageError ? 'MongoDB storage is not configured on Vercel. Add MONGODB_URI in Vercel Project Settings and redeploy.' : mongoError ? `MongoDB storage error: ${error.message}` : 'Your request could not be saved. Please try again or call us.' })
   }
 })
 
@@ -176,8 +193,8 @@ app.get('/api/bookings', requireAdmin, async (_request, response) => {
 app.get('/api/system', requireAdmin, async (_request, response) => {
   response.json({
     api: 'online',
-    storage: hasBlobStorage || !isVercel ? 'online' : 'not-configured',
-    storageProvider: hasBlobStorage ? 'Vercel Blob' : isVercel ? 'missing BLOB_READ_WRITE_TOKEN' : 'local JSON (development only)',
+    storage: hasMongo || !isVercel ? 'online' : 'not-configured',
+    storageProvider: hasMongo ? 'MongoDB' : isVercel ? 'missing MONGODB_URI' : 'local JSON (development only)',
     email: process.env.RESEND_API_KEY && !process.env.RESEND_API_KEY.startsWith('replace_') ? 'configured' : 'not-configured',
     sender: process.env.RESEND_FROM || 'not configured',
   })
