@@ -13,7 +13,9 @@ const settingsFile = path.join(dataDirectory, 'site-settings.json')
 const port = Number(process.env.PORT || 4000)
 const adminKey = process.env.ADMIN_KEY || 'dev-admin-key'
 const isVercel = process.env.VERCEL === '1'
-const hasBlobStorage = Boolean(process.env.BLOB_READ_WRITE_TOKEN)
+const blobToken = (process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN_READ_WRITE_TOKEN || process.env.VERCEL_BLOB_READ_WRITE_TOKEN || '').trim()
+const hasBlobStorage = Boolean(blobToken)
+if (blobToken && !process.env.BLOB_READ_WRITE_TOKEN) process.env.BLOB_READ_WRITE_TOKEN = blobToken
 
 const app = express()
 app.use(cors())

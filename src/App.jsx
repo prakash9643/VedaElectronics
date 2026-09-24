@@ -21,7 +21,7 @@ export default function App() {
 
   useEffect(() => {
     const isAdmin = window.location.pathname === '/admin'
-    document.title = isAdmin ? 'Admin Workspace | Veda Electronics' : 'Veda Electronics | Doorstep Appliance Repair in Darbhanga'
+    document.title = isAdmin ? 'Admin Workspace | Veda Electronics' : 'Electronic Repair Company in Darbhanga | Veda Electronics'
     let robots = document.querySelector('meta[name="robots"]')
     if (!robots) {
       robots = document.createElement('meta')

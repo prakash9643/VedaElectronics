@@ -41,7 +41,7 @@ For production, verify your sending domain in Resend and set `RESEND_FROM` to an
 
 The Vercel deployment uses `api/index.js` and `api/[...path].js` as serverless API handlers. Add these environment variables in Vercel Project Settings before deploying: `ADMIN_KEY`, `RESEND_API_KEY`, `RESEND_FROM`, and `BLOB_READ_WRITE_TOKEN`. `PORT` is not required on Vercel. `BLOB_READ_WRITE_TOKEN` is generated when you create a Vercel Blob store and is required for durable production booking and CMS settings storage; local JSON files remain the development fallback.
 
-If bookings return `Booking storage is not configured on Vercel`, create a Blob store in the Vercel dashboard, add its `BLOB_READ_WRITE_TOKEN` under the Production environment variables, then redeploy. Vercel environment variable changes do not apply to an already-built deployment.
+If bookings return `Booking storage is not configured on Vercel`, confirm the token exists under the same Vercel project and the `Production` environment. The app accepts `BLOB_READ_WRITE_TOKEN`, `BLOB_READ_WRITE_TOKEN_READ_WRITE_TOKEN`, and `VERCEL_BLOB_READ_WRITE_TOKEN`. Keep the token value without surrounding quotes or spaces. Redeploy after saving; Vercel environment variable changes do not apply to an already-built deployment.
 
 If the API returns `401 Unauthorized` from Resend, the API key is invalid or revoked. Create a new Resend key and replace `RESEND_API_KEY` in `.env`. The `onboarding@resend.dev` sender is for testing and cannot send arbitrary customer mail; use a verified domain sender for real bookings.
 
